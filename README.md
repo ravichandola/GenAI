@@ -92,4 +92,4 @@ This project is licensed under the terms included in the LICENSE file.
 
 ## Note
 
-This is an active development project. Features and implementations may change as the project evolves.
+This is an active development project. Features and implementations may change as the project evolves. For more information - https://ravichandola.atlassian.net/jira/software/projects/GP/boards/3
