@@ -6,15 +6,12 @@ This repository contains a collection of AI-powered applications and utilities, 
 
 ```
 .
-├── hello-AI/
-│   ├── chat-cot-03.py      # Main chat implementation with Chain of Thought
-│   ├── chat.py             # Basic chat functionality
-│   └── prompts.py          # System prompts and templates
-├── Introduction/
-│   └── tokenizer.py        # Tokenization utilities
-├── Pipfile                 # Dependencies management
+├── 1. Introduction/        # Basic concepts and introductory materials
+├── 2. COT/                # Chain of Thought implementations
+├── 3. Project/            # Main project implementations
+├── Pipfile                # Dependencies management
 ├── Pipfile.lock
-└── .gitignore             # Git ignore configurations
+└── .gitignore            # Git ignore configurations
 ```
 
 ## Setup and Installation
@@ -37,30 +34,35 @@ This repository contains a collection of AI-powered applications and utilities, 
    OPENAI_MODEL=gpt-3.5-turbo  # or your preferred model
    ```
 
-## Features
+## Project Components
 
-### 1. Chat with Chain of Thought (CoT)
+### 1. Introduction
 
-Located in `hello-AI/chat-cot-03.py`, this implementation includes:
+The Introduction section covers fundamental concepts and basic implementations, providing a foundation for the more advanced topics.
 
-- Interactive chat interface with GPT models
-- Chain of Thought reasoning
-- JSON-structured responses
-- Error handling for API responses
+### 2. Chain of Thought (COT)
 
-### 2. Tokenization Utilities
+This section focuses on implementing Chain of Thought reasoning with GPT models, demonstrating how to:
 
-Located in `Introduction/tokenizer.py`, provides tokenization functionality for text processing.
+- Structure prompts for step-by-step reasoning
+- Process and parse model responses
+- Handle complex problem-solving scenarios
+
+### 3. Project
+
+The main project implementations, featuring:
+
+- Advanced AI interactions
+- Practical applications
+- Integration examples
 
 ## Dependencies
+
+Main dependencies are managed through Pipenv and include:
 
 - `openai` - OpenAI API client
 - `python-dotenv` - Environment variable management
 - `requests` - HTTP requests library
-
-### Development Dependencies
-
-- `pytest` - Testing framework
 
 ## Environment Variables
 
@@ -71,7 +73,7 @@ The project uses the following environment variables (to be set in `.env`):
 
 ## Security
 
-- The `.env` file is included in `.gitignore` to ensure sensitive information is not committed
+- The `.env` file and `.DS_Store` are included in `.gitignore` to ensure sensitive information is not committed
 - API keys and other sensitive data should never be committed to version control
 
 ## Best Practices
@@ -79,6 +81,7 @@ The project uses the following environment variables (to be set in `.env`):
 1. Always use environment variables for sensitive information
 2. Keep your API keys secure and never commit them to version control
 3. Use the provided Pipenv environment for consistent dependency management
+4. Follow the project structure when adding new implementations
 
 ## License
 

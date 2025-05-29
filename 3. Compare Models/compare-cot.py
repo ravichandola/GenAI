@@ -9,6 +9,7 @@ import json
 load_dotenv()
 
 # Initialize OpenAI client with API key
+
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Initialize conversation with system prompt
