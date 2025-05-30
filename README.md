@@ -9,6 +9,17 @@ This repository contains a collection of AI-powered applications and utilities, 
 ├── 1. Introduction/        # Basic concepts and introductory materials
 ├── 2. COT/                # Chain of Thought implementations
 ├── 3. Project/            # Main project implementations
+├── 4. Persona/            # Customizable AI Persona Chatbot System
+│   ├── main.py           # Main application entry point
+│   ├── models.py         # Model handling and response generation
+│   ├── clients.py        # API client configurations
+│   ├── prompts/          # Directory for storing persona prompts
+│   │   ├── naruto-prompt.py
+│   │   ├── baburao-prompt.txt
+│   │   ├── chaatu-employee-prompt.txt
+│   │   ├── modiji-prompt.txt
+│   │   └── hitesh-prompt.txt
+│   └── persona.md        # System documentation
 ├── Pipfile                # Dependencies management
 ├── Pipfile.lock
 └── .gitignore            # Git ignore configurations
@@ -28,10 +39,19 @@ This repository contains a collection of AI-powered applications and utilities, 
    ```bash
    pipenv install
    ```
-3. Create a `.env` file in the root directory with your OpenAI API key:
+3. Create a `.env` file in the root directory with your API keys:
+
    ```
-   OPENAI_API_KEY=your_api_key_here
+   # OpenAI Configuration
+   OPENAI_API_KEY=your_openai_api_key_here
    OPENAI_MODEL=gpt-3.5-turbo  # or your preferred model
+
+   # Gemini Configuration
+   GEMINI_API_KEY=your_gemini_api_key_here
+   GEMINI_MODEL=gemini-pro
+
+   # Provider Selection
+   PROVIDER=openai  # or 'gemini'
    ```
 
 ## Project Components
@@ -56,11 +76,18 @@ The main project implementations, featuring:
 - Practical applications
 - Integration examples
 
+### 4. Persona
+
+The Persona section focuses on creating a customizable AI Persona Chatbot System.
+
+**Read this** - [PERSONA](./4.Persona/persona.md)
+
 ## Dependencies
 
 Main dependencies are managed through Pipenv and include:
 
 - `openai` - OpenAI API client
+- `google-generativeai` - Google Gemini API client
 - `python-dotenv` - Environment variable management
 - `requests` - HTTP requests library
 
@@ -70,6 +97,9 @@ The project uses the following environment variables (to be set in `.env`):
 
 - `OPENAI_API_KEY` - Your OpenAI API key
 - `OPENAI_MODEL` - The GPT model to use (defaults to 'gpt-3.5-turbo')
+- `GEMINI_API_KEY` - Your Google Gemini API key
+- `GEMINI_MODEL` - The Gemini model to use (defaults to 'gemini-pro')
+- `PROVIDER` - AI provider to use ('openai' or 'gemini')
 
 ## Security
 
@@ -95,4 +125,10 @@ This project is licensed under the terms included in the LICENSE file.
 
 ## Note
 
-This is an active development project. Features and implementations may change as the project evolves. For more information - https://ravichandola.atlassian.net/jira/software/projects/GP/boards/3
+This is an active development project. Features and implementations may change as the project evolves. For more information -
+[JIRA BOARD Link](https://ravichandola.atlassian.net/jira/software/projects/GP/boards/3)
+
+## PROJECT LIST
+
+1. [COMPARE MODELS](./3.Compare%20Models/compare-models.md)
+2. [PERSONA](./4.Persona/persona.md)
