@@ -1,3 +1,9 @@
+#Ingestion Phase 
+#1. Load the PDF file
+#2. Split the documents into chunks
+#3. Vector Embeddings
+#4. Index the chunks in the vector store
+
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -15,21 +21,15 @@ pdf_path = Path(__file__).parent / "nodejs.pdf"
 loader = PyPDFLoader(file_path=pdf_path)
 documents = loader.load()
 
-print(documents)
-
 # Split the documents into chunks
-
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=400)
 #overlap of 400 characters between chunks to maintain context
 chunks = text_splitter.split_documents(documents)
-print(len(chunks))
-print(chunks[0])
 
 # Vector Embeddings
 embedding_model = OpenAIEmbeddings(
     model="text-embedding-3-large"
 )
-
 
 # Create a vector store
 vector_store = QdrantVectorStore.from_documents(
