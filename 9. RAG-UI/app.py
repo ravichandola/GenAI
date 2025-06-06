@@ -470,6 +470,8 @@ if 'analyzing' not in st.session_state:
     st.session_state.analyzing = False
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
+if 'chat_histories' not in st.session_state:
+    st.session_state.chat_histories = {}  # Store chat histories per file and persona
 if 'selected_persona' not in st.session_state:
     st.session_state.selected_persona = None
 if 'selected_chat' not in st.session_state:
@@ -531,18 +533,27 @@ def display_persona_selector():
                 key=f"persona_{name}",
                 help=f"Select {name} as your guide"
             ):
-                # Clear states when switching personas
+                # Store current chat history if exists
+                if st.session_state.selected_persona and st.session_state.current_file_name:
+                    history_key = f"{st.session_state.current_file_name}_{st.session_state.selected_persona}"
+                    st.session_state.chat_histories[history_key] = st.session_state.chat_history
+
+                # Load existing chat history for new persona if exists
+                history_key = f"{st.session_state.current_file_name}_{name}"
+                st.session_state.chat_history = st.session_state.chat_histories.get(history_key, [])
+                
+                # Set new persona
                 st.session_state.selected_persona = name
-                st.session_state.chat_history = []  # Clear chat history
                 st.session_state.selected_chat = None  # Reset selected chat
                 st.session_state.input_key = 0  # Reset input key
                 st.session_state.analyzing = False  # Reset analyzing state
                 
-                # Add greeting message from the new persona
-                st.session_state.chat_history.append({
-                    "role": "assistant",
-                    "content": details['greeting']
-                })
+                # Add greeting message only if no chat history exists
+                if not st.session_state.chat_history:
+                    st.session_state.chat_history.append({
+                        "role": "assistant",
+                        "content": details['greeting']
+                    })
                 return True
     return False
 
@@ -552,17 +563,32 @@ with st.sidebar:
     
     if len(st.session_state.chat_history) > 0:
         st.markdown("<div class='chat-history'>", unsafe_allow_html=True)
+        conversations = []
+        current_conversation = []
+        
         for idx, message in enumerate(st.session_state.chat_history):
-            if message["role"] == "user":
-                # Only show user messages in history
-                is_selected = st.session_state.selected_chat == idx
+            current_conversation.append(message)
+            if message["role"] == "assistant":
+                if len(current_conversation) > 0:
+                    conversations.append((len(conversations), current_conversation[:]))
+                current_conversation = []
+        
+        if len(current_conversation) > 0:
+            conversations.append((len(conversations), current_conversation))
+        
+        for conv_idx, conversation in conversations:
+            user_message = next((msg["content"] for msg in conversation if msg["role"] == "user"), "")
+            if user_message:
+                is_selected = st.session_state.selected_chat == conv_idx
                 selected_class = "selected" if is_selected else ""
                 if st.button(
-                    f"🗣️ {message['content'][:50]}...",
-                    key=f"history_{idx}",
+                    f"🗣️ {user_message[:50]}...",
+                    key=f"history_{conv_idx}",
                     help="Click to view this conversation"
                 ):
-                    st.session_state.selected_chat = idx
+                    st.session_state.selected_chat = conv_idx
+                    st.rerun()
+        
         st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("No chat history yet. Start a conversation!")
@@ -603,7 +629,12 @@ with main_col1:
             if st.session_state.current_file_name != uploaded_file.name:
                 st.session_state.pdf_processed = False
                 st.session_state.current_file_name = uploaded_file.name
-                st.session_state.chat_history = []
+                # Load existing chat history for current file and persona if exists
+                if st.session_state.selected_persona:
+                    history_key = f"{uploaded_file.name}_{st.session_state.selected_persona}"
+                    st.session_state.chat_history = st.session_state.chat_histories.get(history_key, [])
+                else:
+                    st.session_state.chat_history = []
             
             # Save to temporary location
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
@@ -654,17 +685,46 @@ with main_col1:
                         """, unsafe_allow_html=True)
                 
                 # Display chat history
-                for message in st.session_state.chat_history:
-                    message_class = "user-message" if message["role"] == "user" else "assistant-message"
-                    if message["role"] == "assistant":
-                        prefix = f"{st.session_state.selected_persona}: " if st.session_state.selected_persona else ""
-                    else:
-                        prefix = "You: "
-                    st.markdown(f"""
-                        <div class='chat-message {message_class}'>
-                        <strong>{prefix}</strong>{message["content"]}
-                        </div>
-                        """, unsafe_allow_html=True)
+                if st.session_state.selected_chat is not None:
+                    conversations = []
+                    current_conversation = []
+                    
+                    for message in st.session_state.chat_history:
+                        current_conversation.append(message)
+                        if message["role"] == "assistant":
+                            if len(current_conversation) > 0:
+                                conversations.append(current_conversation[:])
+                            current_conversation = []
+                    
+                    if len(current_conversation) > 0:
+                        conversations.append(current_conversation)
+                    
+                    if 0 <= st.session_state.selected_chat < len(conversations):
+                        selected_conversation = conversations[st.session_state.selected_chat]
+                        for message in selected_conversation:
+                            message_class = "user-message" if message["role"] == "user" else "assistant-message"
+                            if message["role"] == "assistant":
+                                prefix = f"{st.session_state.selected_persona}: " if st.session_state.selected_persona else ""
+                            else:
+                                prefix = "You: "
+                            st.markdown(f"""
+                                <div class='chat-message {message_class}'>
+                                <strong>{prefix}</strong>{message["content"]}
+                                </div>
+                                """, unsafe_allow_html=True)
+                else:
+                    # Display full chat history if no conversation is selected
+                    for message in st.session_state.chat_history:
+                        message_class = "user-message" if message["role"] == "user" else "assistant-message"
+                        if message["role"] == "assistant":
+                            prefix = f"{st.session_state.selected_persona}: " if st.session_state.selected_persona else ""
+                        else:
+                            prefix = "You: "
+                        st.markdown(f"""
+                            <div class='chat-message {message_class}'>
+                            <strong>{prefix}</strong>{message["content"]}
+                            </div>
+                            """, unsafe_allow_html=True)
                 
                 # Chat input - only enabled if persona is selected
                 if st.session_state.selected_persona:
