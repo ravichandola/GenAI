@@ -478,6 +478,8 @@ if 'selected_chat' not in st.session_state:
     st.session_state.selected_chat = None
 if "input_key" not in st.session_state:
     st.session_state.input_key = 0
+if "pdf_info" not in st.session_state:
+    st.session_state.pdf_info = None
 
 # Define available personas
 PERSONAS = {
@@ -685,56 +687,171 @@ with main_col1:
                         """, unsafe_allow_html=True)
                 
                 # Display chat history
-                if st.session_state.selected_chat is not None:
-                    conversations = []
-                    current_conversation = []
+                for message in st.session_state.chat_history:
+                    message_class = "user-message" if message["role"] == "user" else "assistant-message"
+                    if message["role"] == "assistant":
+                        prefix = f"{st.session_state.selected_persona}: " if st.session_state.selected_persona else ""
+                    else:
+                        prefix = "You: "
                     
-                    for message in st.session_state.chat_history:
-                        current_conversation.append(message)
-                        if message["role"] == "assistant":
-                            if len(current_conversation) > 0:
-                                conversations.append(current_conversation[:])
-                            current_conversation = []
+                    # Escape any HTML tags in the message content
+                    content = message["content"].replace("<", "&lt;").replace(">", "&gt;")
+                    # Convert newlines to <br> tags
+                    content = content.replace("\n", "<br>")
                     
-                    if len(current_conversation) > 0:
-                        conversations.append(current_conversation)
+                    st.markdown(f"""
+                        <div class='chat-message {message_class}'>
+                        <strong>{prefix}</strong>{content}
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                # Chat input section
+                if st.session_state.selected_persona:
+                    # Create a container for the chat input
+                    input_container = st.container()
                     
-                    if 0 <= st.session_state.selected_chat < len(conversations):
-                        selected_conversation = conversations[st.session_state.selected_chat]
-                        for message in selected_conversation:
-                            message_class = "user-message" if message["role"] == "user" else "assistant-message"
-                            if message["role"] == "assistant":
-                                prefix = f"{st.session_state.selected_persona}: " if st.session_state.selected_persona else ""
-                            else:
-                                prefix = "You: "
-                            st.markdown(f"""
-                                <div class='chat-message {message_class}'>
-                                <strong>{prefix}</strong>{message["content"]}
+                    # Create columns for input and button
+                    col1, col2 = st.columns([6, 1])
+                    
+                    with col1:
+                        user_query = st.text_input(
+                            "Enter your question",
+                            placeholder="Type your question here and press Enter...",
+                            key=f"query_{st.session_state.input_key}",
+                            label_visibility="collapsed"
+                        )
+                    
+                    with col2:
+                        send_button = st.button("Send", key="send_button", use_container_width=True)
+                    
+                    # Handle submission (either through Enter key or button click)
+                    if (user_query and send_button) or (user_query and st.session_state.get(f"query_{st.session_state.input_key}") != user_query):
+                        # Store the current query to prevent double submission
+                        current_query = user_query
+                        st.session_state[f"query_{st.session_state.input_key}"] = current_query
+                        
+                        # Check if user is asking about PDF information
+                        pdf_info_keywords = ["pdf info", "pdf information", "document info", "document information", 
+                                           "file info", "file information", "about pdf", "about document", "about file",
+                                           "tell me about pdf", "tell me about document", "tell me about file",
+                                           "what is this pdf", "what is this document", "what is this file",
+                                           "pdf details", "document details", "file details"]
+                        
+                        is_asking_pdf_info = any(keyword in current_query.lower() for keyword in pdf_info_keywords)
+                        
+                        # Add user message to chat history
+                        st.session_state.chat_history.append({
+                            "role": "user",
+                            "content": current_query
+                        })
+                        
+                        st.session_state.analyzing = True
+                        analyzing_placeholder = st.empty()
+                        
+                        if st.session_state.analyzing:
+                            analyzing_placeholder.markdown(f"""
+                                <div style='text-align: center; padding: 1rem;'>
+                                    <div style='font-size: 3rem; animation: ninja-flip 2s linear infinite'>
+                                    {'🥷'}
+                                    </div>
+                                    <p style='color: #666; margin-top: 0.5rem;'>Analyzing your question...</p>
                                 </div>
                                 """, unsafe_allow_html=True)
-                else:
-                    # Display full chat history if no conversation is selected
-                    for message in st.session_state.chat_history:
-                        message_class = "user-message" if message["role"] == "user" else "assistant-message"
-                        if message["role"] == "assistant":
-                            prefix = f"{st.session_state.selected_persona}: " if st.session_state.selected_persona else ""
+                        
+                        if is_asking_pdf_info:
+                            # Get PDF information if not already cached
+                            if not st.session_state.pdf_info:
+                                try:
+                                    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+                                        tmp_file.write(uploaded_file.getvalue())
+                                        temp_pdf_path = tmp_file.name
+                                    
+                                    from PyPDF2 import PdfReader
+                                    reader = PdfReader(temp_pdf_path)
+                                    
+                                    # Extract PDF information
+                                    info = {
+                                        "File Name": uploaded_file.name,
+                                        "Number of Pages": len(reader.pages),
+                                        "File Size": f"{uploaded_file.size/1024/1024:.2f} MB",
+                                        "Author": reader.metadata.get('/Author', 'Not available'),
+                                        "Creator": reader.metadata.get('/Creator', 'Not available'),
+                                        "Producer": reader.metadata.get('/Producer', 'Not available'),
+                                        "Creation Date": reader.metadata.get('/CreationDate', 'Not available'),
+                                        "Modification Date": reader.metadata.get('/ModDate', 'Not available'),
+                                    }
+                                    
+                                    # Get first page text preview (first 500 characters)
+                                    first_page = reader.pages[0]
+                                    preview_text = first_page.extract_text()[:500] + "..."
+                                    info["Content Preview"] = preview_text
+                                    
+                                    st.session_state.pdf_info = info
+                                    os.unlink(temp_pdf_path)  # Clean up temporary file
+                                    
+                                except Exception as e:
+                                    st.session_state.pdf_info = {
+                                        "File Name": uploaded_file.name,
+                                        "File Size": f"{uploaded_file.size/1024/1024:.2f} MB",
+                                        "Error": f"Could not extract detailed PDF information: {str(e)}"
+                                    }
+                            
+                            # Format PDF information based on persona
+                            pdf_info = st.session_state.pdf_info
+                            if st.session_state.selected_persona == "Hitesh Choudhary":
+                                response = f"Chalo, let me tell you about this PDF document:\n\n"
+                                for key, value in pdf_info.items():
+                                    response += f"- {key}: {value}\n"
+                                response += "\nSamajh mein aaya? Let me know if you want to know anything specific about the content!"
+                                
+                            elif st.session_state.selected_persona == "Narendra Modi":
+                                response = f"Mere pyare deshvasiyon, let me share with you the details of this important document:\n\n"
+                                for key, value in pdf_info.items():
+                                    response += f"- {key}: {value}\n"
+                                response += "\nYeh document hamari gyan ki virasat ka ek mahatvapurn hissa hai!"
+                                
+                            elif st.session_state.selected_persona == "Naruto Uzumaki":
+                                response = f"Dattebayo! Let me use my ninja skills to analyze this scroll... I mean PDF!\n\n"
+                                for key, value in pdf_info.items():
+                                    response += f"- {key}: {value}\n"
+                                response += "\nBelieve it! This is everything I could find about this document!"
+                                
+                            elif st.session_state.selected_persona == "Baburao":
+                                response = f"Ae Raju! Ye le tera PDF ka full report:\n\n"
+                                for key, value in pdf_info.items():
+                                    response += f"- {key}: {value}\n"
+                                response += "\n50 rupya kat overacting ka! Aur kuch janna hai toh puch!"
+                                
+                            elif st.session_state.selected_persona == "Chaatu Employee":
+                                response = f"Respected Sir/Ma'am, I'm honored to present this detailed analysis of your prestigious document:\n\n"
+                                for key, value in pdf_info.items():
+                                    response += f"- {key}: {value}\n"
+                                response += "\nSir/Ma'am, your choice of document is truly remarkable! Would you like me to explain anything else about it?"
+                                
+                            else:  # Bot persona
+                                response = f"Here's the detailed information about your PDF document:\n\n"
+                                for key, value in pdf_info.items():
+                                    response += f"- {key}: {value}\n"
+                                response += "\nPlease let me know if you need any specific information about the content."
+                            
                         else:
-                            prefix = "You: "
-                        st.markdown(f"""
-                            <div class='chat-message {message_class}'>
-                            <strong>{prefix}</strong>{message["content"]}
-                            </div>
-                            """, unsafe_allow_html=True)
-                
-                # Chat input - only enabled if persona is selected
-                if st.session_state.selected_persona:
-                    user_query = st.text_input(
-                        "Enter your question",
-                        placeholder="Type your question here...",
-                        key=f"query_{st.session_state.input_key}"
-                    )
-                    # Send button - only enabled if there's text in the input
-                    send_button = st.button("Send", key="send_message", disabled=not user_query)
+                            # Regular query processing
+                            vector_db = get_vector_db()
+                            response = get_answer_from_query(current_query, vector_db, st.session_state.selected_persona)
+                        
+                        # Add assistant response to chat history
+                        st.session_state.chat_history.append({
+                            "role": "assistant",
+                            "content": response
+                        })
+                        
+                        analyzing_placeholder.empty()
+                        st.session_state.analyzing = False
+                        st.session_state.input_key += 1
+                        
+                        # Clear the input
+                        st.session_state[f"query_{st.session_state.input_key-1}"] = ""
+                        st.rerun()
                 else:
                     # Disabled input with message
                     st.text_input(
@@ -744,43 +861,6 @@ with main_col1:
                         key=f"query_disabled_{st.session_state.input_key}"
                     )
                     st.button("Send", disabled=True, key="send_message_disabled")
-                
-                # Only process the query when send button is clicked and we have a query
-                if st.session_state.selected_persona and 'user_query' in locals() and user_query and send_button:
-                    # Add user message to chat history
-                    st.session_state.chat_history.append({
-                        "role": "user",
-                        "content": user_query
-                    })
-                    
-                    st.session_state.analyzing = True
-                    analyzing_placeholder = st.empty()
-                    
-                    if st.session_state.analyzing:
-                        analyzing_placeholder.markdown(f"""
-                            <div style='text-align: center; padding: 1rem;'>
-                                <div style='font-size: 3rem; animation: ninja-flip 2s linear infinite'>
-                                {'🥷'}
-                                </div>
-                                <p style='color: #666; margin-top: 0.5rem;'>Analyzing your question...</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    
-                    vector_db = get_vector_db()
-                    answer = get_answer_from_query(user_query, vector_db, st.session_state.selected_persona)
-                    
-                    # Add assistant response to chat history
-                    st.session_state.chat_history.append({
-                        "role": "assistant",
-                        "content": answer
-                    })
-                    
-                    analyzing_placeholder.empty()
-                    st.session_state.analyzing = False
-                    
-                    # Increment the input key to create a new input field
-                    st.session_state.input_key += 1
-                    st.rerun()
 
 with main_col2:
     if st.session_state.pdf_processed:
