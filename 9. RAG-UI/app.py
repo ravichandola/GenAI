@@ -501,7 +501,7 @@ PERSONAS = {
         "description": "A grumpy but lovable character who gives advice with a touch of frustration",
         "greeting": "Ae Raju!"
     },
-    "Chaatu Employee": {
+    "Employee": {
         "image": "assets/chaatu.png",  # An animated GIF of someone bowing repeatedly
         "description": "An overly flattering employee who explains everything with excessive praise",
         "greeting": "Sir/Ma'am, aapne bulaya aur main chala aaya!"
