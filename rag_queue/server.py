@@ -1,22 +1,37 @@
-from fastapi import FastAPI, Query
-from .queue.connection import queue
-from .queue.workers import process_query
+from fastapi import FastAPI, Query, Path
+from rag_queue.task_queue.connection import queue
 
 app = FastAPI()
 
 
-@app.get("/")
+@app.get('/')
 def root():
-    return {"status" : "server is up and running"}
+    return {"status": 'Server is up and running'}
 
 
-@app.post("/chat")
+@app.post('/chat')
 def chat(
-    query: str = Query(..., description="The query to search for")
+    query: str = Query(..., description="Chat Message")
 ):
-    job = queue.enqueue(process_query, query)
-    return {"status" : "your job recieved and is being processed","job_id" : job.id}
+    # Enqueue the job with the function path as string
+    job = queue.enqueue('rag_queue.task_queue.workers.process_query', query)
 
-#is query ko queue me add karna hai
-#user ko bolo your job recieved
+    # Return job status
+    return {"status": "queued", "job_id": job.id}
 
+
+@app.get("/result/{job_id}")
+def get_result(
+    job_id: str = Path(..., description="Job ID")
+):
+    job = queue.fetch_job(job_id=job_id)
+    if job is None:
+        return {"error": "Job not found", "status": "not_found"}
+
+    if job.is_finished:
+        result = job.return_value()
+        return {"result": result, "status": "completed"}
+    elif job.is_failed:
+        return {"error": str(job.exc_info), "status": "failed"}
+    else:
+        return {"status": "in_progress"}
